@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { connectDB } from "./config/db.js";
-import cors from "cors"; // 🔥 1. Importar cors oficial
+import cors from "cors"; 
 
 import worldRoutes from "./routes/world.routes.js";
 import eventRoutes from "./routes/event.routes.js";
@@ -12,20 +12,14 @@ import authRoutes from "./routes/auth.routes.js";
 dotenv.config();
 const app = express();
 
-// ✅ 2. CONFIGURACIÓN DE CORS PROFESIONAL
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "https://hardcorelogs.vercel.app"
-];
-
+// ✅ 1. CONFIGURACIÓN DE CORS GLOBAL (Versión Final)
 app.use(cors({
   origin: function (origin, callback) {
-    // Permitir pedidos sin origen (como apps móviles o curl) o en la lista permitida
-    if (!origin || allowedOrigins.indexOf(origin) !== -1 || origin.includes("vercel.app")) {
+    // Permitir si no hay origen (como el Mod de MC), localhost o cualquier subdominio de Vercel
+    if (!origin || origin.includes("localhost") || origin.includes("127.0.0.1") || origin.includes("vercel.app")) {
       callback(null, true);
     } else {
-      callback(new Error("Not allowed by CORS"));
+      callback(new Error("CORS No permitido por seguridad"));
     }
   },
   credentials: true,
@@ -35,48 +29,47 @@ app.use(cors({
 
 app.use(express.json());
 
-// --- EL RESTO DE TU CÓDIGO (httpServer, Socket, DB, etc.) SE MANTIENE IGUAL ---
-
-// ✅ SOCKET
+// ✅ 2. SERVER HTTP & SOCKET.IO
+const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: allowedOrigins, // 🔥 3. Usar los mismos orígenes para el socket
+    origin: true, // Permite que el socket conecte desde cualquier lado
     methods: ["GET", "POST"],
     credentials: true
   }
 });
 
-// ✅ DB
+app.set("socketio", io);
+
+// ✅ 3. CONEXIÓN A BASE DE DATOS
 connectDB();
 
-// ✅ LOG
+// ✅ 4. MIDDLEWARE DE LOGS (Para ver los errores en la consola de Render)
 app.use((req, res, next) => {
-  console.log(`🚀 ${req.method} ${req.url}`);
+  console.log(`📩 Solicitud: ${req.method} ${req.url}`);
   next();
 });
 
-// ✅ TEST
+// ✅ 5. RUTA DE TEST
 app.get("/", (req, res) => {
-  res.send("Backend funcionando 🚀");
+  res.send("Backend de Hardcore Logs funcionando 🚀");
 });
 
-// ✅ RUTAS
+// ✅ 6. DEFINICIÓN DE RUTAS API
 app.use("/api/worlds", worldRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/auth", authRoutes);
 
-// ✅ SOCKET CONNECTION
+// ✅ 7. EVENTOS DE SOCKET
 io.on("connection", (socket) => {
-  console.log("✅ Cliente conectado:", socket.id);
-
+  console.log("✅ Cliente socket conectado:", socket.id);
   socket.on("disconnect", () => {
-    console.log("❌ Cliente desconectado:", socket.id);
+    console.log("❌ Cliente socket desconectado");
   });
 });
 
-// ✅ PORT
+// ✅ 8. ARRANQUE DEL SERVIDOR
 const PORT = process.env.PORT || 4000;
-
 httpServer.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+  console.log(`🚀 Servidor volando en el puerto ${PORT}`);
 });
