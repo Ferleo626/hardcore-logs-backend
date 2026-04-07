@@ -19,11 +19,14 @@ const allowedOrigins = [
   "https://hardcorelogs.vercel.app"
 ];
 
-// ✅ CORS MANUAL (SOLUCIÓN DEFINITIVA)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
-  if (allowedOrigins.includes(origin)) {
+  // ✅ permitir localhost + cualquier vercel
+  if (
+    origin?.includes("localhost") ||
+    origin?.includes("vercel.app")
+  ) {
     res.header("Access-Control-Allow-Origin", origin);
   }
 
@@ -31,7 +34,6 @@ app.use((req, res, next) => {
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.header("Access-Control-Allow-Credentials", "true");
 
-  // 🔥 CLAVE: responder preflight
   if (req.method === "OPTIONS") {
     return res.sendStatus(200);
   }
