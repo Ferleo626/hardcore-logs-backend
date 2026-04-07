@@ -15,7 +15,11 @@ const app = express();
 
 // ✅ 1. CORS CONFIGURADO PARA NAVEGADOR Y MOD
 app.use(cors({
-  origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+  origin: [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://TU-FRONTEND.onrender.com"
+],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
@@ -30,7 +34,6 @@ const io = new Server(httpServer, {
   cors: {
     origin: "*", 
     methods: ["GET", "POST", "PUT", "DELETE"], 
-    credentials: true
   },
   transports: ["websocket", "polling"]
 });
@@ -62,7 +65,11 @@ io.on("connection", (socket) => {
 });
 
 // ✅ 8. LEVANTAR SERVIDOR
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
+
+httpServer.listen(PORT, () => {
+  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+});
 
 httpServer.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
