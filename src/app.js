@@ -18,7 +18,7 @@ app.use(cors({
   origin: [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
-  "https://TU-FRONTEND.onrender.com"
+   "https://hardcorelogs.vercel.app"
 ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
