@@ -3,58 +3,48 @@ import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { connectDB } from "./config/db.js";
+import cors from "cors"; // 🔥 1. Importar cors oficial
 
 import worldRoutes from "./routes/world.routes.js";
 import eventRoutes from "./routes/event.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 
 dotenv.config();
-
 const app = express();
 
-// ✅ ORÍGENES PERMITIDOS
+// ✅ 2. CONFIGURACIÓN DE CORS PROFESIONAL
 const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "https://hardcorelogs.vercel.app"
 ];
 
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-
-  // ✅ permitir localhost + cualquier vercel
-  if (
-    origin?.includes("localhost") ||
-    origin?.includes("vercel.app")
-  ) {
-    res.header("Access-Control-Allow-Origin", origin);
-  }
-
-  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("Access-Control-Allow-Credentials", "true");
-
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
-
-  next();
-});
+app.use(cors({
+  origin: function (origin, callback) {
+    // Permitir pedidos sin origen (como apps móviles o curl) o en la lista permitida
+    if (!origin || allowedOrigins.indexOf(origin) !== -1 || origin.includes("vercel.app")) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
 app.use(express.json());
 
-// ✅ SERVER HTTP
-const httpServer = createServer(app);
+// --- EL RESTO DE TU CÓDIGO (httpServer, Socket, DB, etc.) SE MANTIENE IGUAL ---
 
 // ✅ SOCKET
 const io = new Server(httpServer, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE"]
+    origin: allowedOrigins, // 🔥 3. Usar los mismos orígenes para el socket
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
-
-app.set("socketio", io);
 
 // ✅ DB
 connectDB();
