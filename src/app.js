@@ -13,30 +13,18 @@ dotenv.config();
 
 const app = express();
 
-// ✅ LISTA DE ORÍGENES PERMITIDOS
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "https://hardcorelogs.vercel.app"
-];
-
-// ✅ CONFIG CORS COMPLETA
+// ✅ CORS SIMPLE Y FUNCIONANDO
 app.use(cors({
-  origin: function (origin, callback) {
-    // permite requests sin origin (Postman, etc)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("No permitido por CORS"));
-    }
-  },
+  origin: [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://hardcorelogs.vercel.app"
+  ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true
 }));
 
-// ✅ IMPORTANTE: responder preflight
+// ✅ MUY IMPORTANTE: PREVENTA ERROR PREFLIGHT
 app.options("*", cors());
 
 app.use(express.json());
@@ -61,6 +49,11 @@ connectDB();
 app.use((req, res, next) => {
   console.log(`🚀 ${req.method} ${req.url}`);
   next();
+});
+
+// ✅ RUTA TEST (para debug)
+app.get("/", (req, res) => {
+  res.send("Backend funcionando 🚀");
 });
 
 // ✅ RUTAS
