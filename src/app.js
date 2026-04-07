@@ -1,5 +1,4 @@
 import express from "express";
-import cors from "cors";
 import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server } from "socket.io";
@@ -13,19 +12,32 @@ dotenv.config();
 
 const app = express();
 
-// ✅ CORS SIMPLE Y FUNCIONANDO
-app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://hardcorelogs.vercel.app"
-  ],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  credentials: true
-}));
+// ✅ ORÍGENES PERMITIDOS
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://hardcorelogs.vercel.app"
+];
 
-// ✅ MUY IMPORTANTE: PREVENTA ERROR PREFLIGHT
-app.options("*", cors());
+// ✅ CORS MANUAL (SOLUCIÓN DEFINITIVA)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+
+  // 🔥 CLAVE: responder preflight
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
 
 app.use(express.json());
 
@@ -51,7 +63,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ RUTA TEST (para debug)
+// ✅ TEST
 app.get("/", (req, res) => {
   res.send("Backend funcionando 🚀");
 });
