@@ -1,30 +1,36 @@
 import Event from "../models/event.model.js";
 import World from "../models/world.model.js";
 
-// 1️⃣ CREAR EVENTO
 export const createEvent = async (req, res) => {
   const { type, folderName, x, y, z, description, dimension } = req.body;
   const userId = req.user.id;
 
-  console.log(`📡 EVENTO RECIBIDO → carpeta: "${folderName}" | user: ${userId}`);
+  console.log(`📡 EVENTO → carpeta: "${folderName}" | user: ${userId}`);
 
   try {
-    // 🔥 1. BUSCAR MUNDO POR folderName + user
-    let world = await World.findOne({ folderName, user: userId });
 
-    // 🔥 2. SI NO EXISTE → CREAR NUEVO (NO usar active)
+    // 🔍 DEBUG REAL
+    console.log("📦 folderName MOD:", folderName);
+
+    const worlds = await World.find({ user: userId });
+    console.log("🌍 WORLDS DB:", worlds.map(w => w.folderName));
+
+    // 🔥 BUSCAR EXACTO
+    let world = await World.findOne({ folderName: folderName, user: userId });
+
+    // 🚫 SI NO EXISTE → BLOQUEAR
     if (!world) {
-      console.log(`🆕 Creando nuevo mundo para carpeta: ${folderName}`);
+      console.log("❌ Mundo NO encontrado, evento rechazado");
 
-      world = await World.create({
-        name: folderName,       // nombre visible
-        folderName: folderName, // clave real
-        user: userId,
-        active: false
+      return res.status(404).json({
+        error: "Mundo no registrado en la app",
+        folderNameRecibido: folderName
       });
     }
 
-    // 🔥 3. CREAR EVENTO
+    console.log(`✅ Mundo encontrado → ${world.name}`);
+
+    // 🔥 CREAR EVENTO
     const newEvent = new Event({
       type,
       x,
@@ -36,16 +42,16 @@ export const createEvent = async (req, res) => {
     });
 
     await newEvent.save();
-    console.log(`💾 EVENTO GUARDADO → ${type} en ${world.name}`);
 
-    // 🔥 4. SOCKET
+    console.log(`💾 EVENTO GUARDADO en ${world.name}`);
+
+    // 🔥 SOCKET
     const io = req.app.get("socketio");
     if (io) {
       io.emit("newEvent", {
         ...newEvent._doc,
         worldId: world._id
       });
-      console.log(`🚀 SOCKET EMITIDO → worldId: ${world._id}`);
     }
 
     res.status(201).json(newEvent);
@@ -53,18 +59,5 @@ export const createEvent = async (req, res) => {
   } catch (error) {
     console.error("❌ Error en createEvent:", error);
     res.status(500).json({ error: "Error interno" });
-  }
-};
-
-// 2️⃣ OBTENER EVENTOS
-export const getEventsByWorld = async (req, res) => {
-  const { worldId } = req.params;
-
-  try {
-    const events = await Event.find({ worldId }).sort({ createdAt: -1 });
-    res.json(events);
-  } catch (error) {
-    console.error("❌ Error en getEventsByWorld:", error);
-    res.status(500).json({ error: "Error al obtener eventos" });
   }
 };
