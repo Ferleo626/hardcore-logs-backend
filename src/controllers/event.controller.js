@@ -61,3 +61,14 @@ export const createEvent = async (req, res) => {
     res.status(500).json({ error: "Error interno" });
   }
 };
+export const getEventsByWorld = async (req, res) => {
+  const { worldId } = req.params;
+
+  try {
+    const events = await Event.find({ worldId }).sort({ createdAt: -1 });
+    res.json(events);
+  } catch (error) {
+    console.error("❌ Error en getEventsByWorld:", error);
+    res.status(500).json({ error: "Error al obtener eventos" });
+  }
+};
