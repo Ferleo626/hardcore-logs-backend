@@ -8,20 +8,22 @@ export const createEvent = async (req, res) => {
   console.log(`📡 EVENTO → carpeta: "${folderName}" | user: ${userId}`);
 
   try {
-    // 🔍 Buscar mundo exacto
-    let world = await World.findOne({ folderName: folderName, user: userId });
+    // Limpiar folderName de espacios
+    const cleanFolder = folderName.trim();
 
-    // 🚀 Si no existe → crear automáticamente
+    // Buscar mundo exacto
+    let world = await World.findOne({ folderName: cleanFolder, user: userId });
+
+    // Si no existe → crear automáticamente
     if (!world) {
-      console.log(`🌱 Mundo no encontrado. Creando automáticamente: "${folderName}"`);
+      console.log(`🌱 Mundo no encontrado. Creando automáticamente: "${cleanFolder}"`);
 
-      // 🛡 Evitar duplicados si otro request crea el mismo mundo al mismo tiempo
       world = await World.findOneAndUpdate(
-        { folderName: folderName, user: userId },
+        { folderName: cleanFolder, user: userId },
         { 
           $setOnInsert: {
-            name: folderName,
-            folderName: folderName,
+            name: cleanFolder,
+            folderName: cleanFolder,
             user: userId,
             active: true,
             status: "activo",
@@ -32,14 +34,14 @@ export const createEvent = async (req, res) => {
 
       console.log(`✅ Mundo creado automáticamente: "${world.name}"`);
 
-      // ⚡ Asegurar que solo este mundo sea activo para el usuario
+      // Desactivar otros mundos activos
       await World.updateMany(
         { user: userId, _id: { $ne: world._id } },
         { active: false }
       );
     }
 
-    // 🔥 Crear evento
+    // Crear evento
     const newEvent = new Event({
       type,
       x,
@@ -53,7 +55,7 @@ export const createEvent = async (req, res) => {
     await newEvent.save();
     console.log(`💾 EVENTO GUARDADO en ${world.name}`);
 
-    // 🔊 Emitir por socket
+    // Emitir por socket
     const io = req.app.get("socketio");
     if (io) {
       io.emit("newEvent", {
@@ -70,8 +72,6 @@ export const createEvent = async (req, res) => {
   }
 };
 
-// ======================================================
-// Obtener eventos por mundo
 export const getEventsByWorld = async (req, res) => {
   const { worldId } = req.params;
   try {
