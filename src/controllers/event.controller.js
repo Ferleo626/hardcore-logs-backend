@@ -1,6 +1,9 @@
 import Event from "../models/event.model.js";
 import World from "../models/world.model.js";
 
+// ================================
+// CREAR EVENTO (AUTOMÁTICO POR MUNDO)
+// ================================
 export const createEvent = async (req, res) => {
   const { type, folderName, x, y, z, description, dimension } = req.body;
   const userId = req.user.id;
@@ -8,27 +11,30 @@ export const createEvent = async (req, res) => {
   console.log(`📡 EVENTO → carpeta: "${folderName}" | user: ${userId}`);
 
   try {
-
-    // 🔍 DEBUG REAL
+    // 🔍 Debug de folderName recibido
     console.log("📦 folderName MOD:", folderName);
 
+    // 🔍 Lista de worlds del usuario
     const worlds = await World.find({ user: userId });
     console.log("🌍 WORLDS DB:", worlds.map(w => w.folderName));
 
-    // 🔥 BUSCAR EXACTO
-    let world = await World.findOne({ folderName: folderName, user: userId });
+    // 🔥 BUSCAR WORLD EXISTENTE
+    let world = await World.findOne({ folderName, user: userId });
 
-    // 🚫 SI NO EXISTE → BLOQUEAR
+    // 🚫 SI NO EXISTE → CREAR AUTOMÁTICAMENTE
     if (!world) {
-      console.log("❌ Mundo NO encontrado, evento rechazado");
-
-      return res.status(404).json({
-        error: "Mundo no registrado en la app",
-        folderNameRecibido: folderName
+      world = new World({
+        name: folderName,       // Nombre visible en la app
+        folderName: folderName, // Identificador único
+        user: userId,
+        active: true,
+        status: "activo"
       });
+      await world.save();
+      console.log(`✅ Nuevo world creado automáticamente → ${folderName}`);
+    } else {
+      console.log(`✅ Mundo encontrado → ${world.name}`);
     }
-
-    console.log(`✅ Mundo encontrado → ${world.name}`);
 
     // 🔥 CREAR EVENTO
     const newEvent = new Event({
@@ -36,22 +42,21 @@ export const createEvent = async (req, res) => {
       x,
       y,
       z,
-      description: description || "Auto detectado",
+      description: description || "Auto detectado desde Minecraft",
       dimension: dimension || "OVERWORLD",
       worldId: world._id
     });
 
     await newEvent.save();
+    console.log(`💾 Evento guardado → ${type} en ${world.name}`);
 
-    console.log(`💾 EVENTO GUARDADO en ${world.name}`);
-
-    // 🔥 SOCKET
+    // 🔥 EMITIR POR SOCKET.IO
     const io = req.app.get("socketio");
     if (io) {
-      io.emit("newEvent", {
-        ...newEvent._doc,
-        worldId: world._id
-      });
+      io.emit("newEvent", { ...newEvent._doc, worldId: world._id });
+      console.log(`🚀 Socket emitido → worldId: ${world._id}`);
+    } else {
+      console.log("⚠️ Socket.io no disponible");
     }
 
     res.status(201).json(newEvent);
@@ -61,6 +66,10 @@ export const createEvent = async (req, res) => {
     res.status(500).json({ error: "Error interno" });
   }
 };
+
+// ================================
+// OBTENER EVENTOS POR WORLD
+// ================================
 export const getEventsByWorld = async (req, res) => {
   const { worldId } = req.params;
 
