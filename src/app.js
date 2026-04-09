@@ -12,19 +12,24 @@ import authRoutes from "./routes/auth.routes.js";
 dotenv.config();
 const app = express();
 
-// ✅ 1. CONFIGURACIÓN DE CORS GLOBAL (Versión Final)
+// ✅ 1. CONFIGURACIÓN DE CORS GLOBAL (Versión Final con dominios explícitos)
+const allowedOrigins = [
+  'https://hardcorelogs.vercel.app',
+  'http://localhost:5173'
+];
+
 app.use(cors({
-  origin: function (origin, callback) {
-    // Permitir si no hay origen (como el Mod de MC), localhost o cualquier subdominio de Vercel
-    if (!origin || origin.includes("localhost") || origin.includes("127.0.0.1") || origin.includes("vercel.app")) {
+  origin: function(origin, callback) {
+    // Permite solicitudes sin origin (como tu Mod) o que estén en la lista
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error("CORS No permitido por seguridad"));
     }
   },
-  credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
 }));
 
 app.use(express.json());
@@ -33,7 +38,7 @@ app.use(express.json());
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: true, // Permite que el socket conecte desde cualquier lado
+    origin: allowedOrigins, // Socket.io usa los mismos dominios
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -44,7 +49,7 @@ app.set("socketio", io);
 // ✅ 3. CONEXIÓN A BASE DE DATOS
 connectDB();
 
-// ✅ 4. MIDDLEWARE DE LOGS (Para ver los errores en la consola de Render)
+// ✅ 4. MIDDLEWARE DE LOGS
 app.use((req, res, next) => {
   console.log(`📩 Solicitud: ${req.method} ${req.url}`);
   next();
