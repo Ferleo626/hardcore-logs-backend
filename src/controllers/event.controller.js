@@ -12,7 +12,7 @@ const normalizeDimension = (dim) => {
 };
 
 export const createEvent = async (req, res) => {
-  const { type, folderName, x, y, z, description, dimension } = req.body;
+  const { type, folderName, x, y, z, description, dimension, player } = req.body;
   const userId = req.user.id;
 
   console.log(`📡 EVENTO → carpeta: "${folderName}" | user: ${userId}`);
@@ -38,6 +38,7 @@ export const createEvent = async (req, res) => {
     // 🔥 CREAR EVENTO
     const newEvent = new Event({
       type,
+      player: player || "Desconocido",
       x,
       y,
       z,
