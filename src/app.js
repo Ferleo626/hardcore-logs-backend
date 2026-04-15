@@ -2,29 +2,39 @@ import express from "express";
 import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import { connectDB } from "./config/db.js";
-import cors from "cors"; 
+import cors from "cors";
 
+// 🔐 Cargar variables de entorno PRIMERO
+dotenv.config();
+console.log("API KEY:", process.env.OPENAI_API_KEY);
+
+// 📦 Imports internos
+import { connectDB } from "./config/db.js";
 import worldRoutes from "./routes/world.routes.js";
 import eventRoutes from "./routes/event.routes.js";
 import authRoutes from "./routes/auth.routes.js";
+import summaryRoutes from "./routes/summary.routes.js";
 
-dotenv.config();
 const app = express();
 
-// ✅ 1. CONFIGURACIÓN DE CORS GLOBAL (Versión Final con dominios explícitos)
+// ✅ Validación clave API (te ahorra errores silenciosos)
+if (!process.env.OPENAI_API_KEY) {
+  console.error("❌ Falta OPENAI_API_KEY en .env");
+  process.exit(1);
+}
+
+// 🌍 CORS CONFIG
 const allowedOrigins = [
-  'https://hardcorelogs.vercel.app',
-  'http://localhost:5173'
+  "https://hardcorelogs.vercel.app",
+  "http://localhost:5173"
 ];
 
 app.use(cors({
-  origin: function(origin, callback) {
-    // Permite solicitudes sin origin (como tu Mod) o que estén en la lista
+  origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error("CORS No permitido por seguridad"));
+      callback(new Error("CORS bloqueado"));
     }
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -32,13 +42,15 @@ app.use(cors({
   credentials: true
 }));
 
+// 🧠 Middlewares base
 app.use(express.json());
 
-// ✅ 2. SERVER HTTP & SOCKET.IO
+// 📡 HTTP + SOCKET.IO
 const httpServer = createServer(app);
+
 const io = new Server(httpServer, {
   cors: {
-    origin: allowedOrigins, // Socket.io usa los mismos dominios
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -46,35 +58,38 @@ const io = new Server(httpServer, {
 
 app.set("socketio", io);
 
-// ✅ 3. CONEXIÓN A BASE DE DATOS
+// 🗄️ DB
 connectDB();
 
-// ✅ 4. MIDDLEWARE DE LOGS
+// 🧾 Logger simple
 app.use((req, res, next) => {
-  console.log(`📩 Solicitud: ${req.method} ${req.url}`);
+  console.log(`📩 ${req.method} ${req.url}`);
   next();
 });
 
-// ✅ 5. RUTA DE TEST
+// 🧪 Health check
 app.get("/", (req, res) => {
-  res.send("Backend de Hardcore Logs funcionando 🚀");
+  res.send("🔥 Hardcore Logs backend activo");
 });
 
-// ✅ 6. DEFINICIÓN DE RUTAS API
+// 🚀 Rutas API
 app.use("/api/worlds", worldRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/summary", summaryRoutes);
 
-// ✅ 7. EVENTOS DE SOCKET
+// 🔌 Socket eventos
 io.on("connection", (socket) => {
-  console.log("✅ Cliente socket conectado:", socket.id);
+  console.log("✅ Socket conectado:", socket.id);
+
   socket.on("disconnect", () => {
-    console.log("❌ Cliente socket desconectado");
+    console.log("❌ Socket desconectado:", socket.id);
   });
 });
 
-// ✅ 8. ARRANQUE DEL SERVIDOR
+// 🚀 Start server
 const PORT = process.env.PORT || 4000;
+
 httpServer.listen(PORT, () => {
-  console.log(`🚀 Servidor volando en el puerto ${PORT}`);
+  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
