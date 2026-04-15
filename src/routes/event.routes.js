@@ -4,14 +4,13 @@ import { authMiddleware } from "../middleware/auth.js";
 
 const router = Router();
 
+// ⚠️ SIEMPRE primero las rutas específicas
+router.get("/summary/:worldId", generateSummary);
+
 // 💎 CREAR EVENTO
 router.post("/", authMiddleware, createEvent);
 
-// 📊 RESUMEN DEL MUNDO
-router.get("/summary/:worldId", generateSummary);
-
 // 📜 OBTENER EVENTOS
 router.get("/:worldId", getEventsByWorld);
-
 
 export default router;
