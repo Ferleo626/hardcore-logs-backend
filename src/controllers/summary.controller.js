@@ -4,9 +4,15 @@ dotenv.config();
 import OpenAI from "openai";
 import Event from "../models/event.model.js";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai = null;
+
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+} else {
+  console.log("⚠️ OpenAI no configurado → modo gratis activado");
+}
 
 export const generateSummary = async (req, res) => {
   try {
