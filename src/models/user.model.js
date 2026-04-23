@@ -1,29 +1,21 @@
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
-  // 🌐 LOGIN WEB (opcional)
-  email: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
-  password: {
-    type: String
-  },
 
-  // 🎮 LOGIN AUTOMÁTICO (MOD)
+  // 🎮 ÚNICO IDENTIFICADOR (Minecraft)
   uuid: {
     type: String,
     unique: true,
-    sparse: true
+    required: true
   },
+
   username: {
-    type: String
+    type: String,
+    default: "Jugador"
   }
 
 }, {
   timestamps: true
 });
-
 
 export default mongoose.model("User", userSchema);

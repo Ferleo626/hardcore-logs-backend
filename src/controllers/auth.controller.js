@@ -1,4 +1,3 @@
-import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
@@ -6,51 +5,62 @@ import User from "../models/user.model.js";
 import World from "../models/world.model.js";
 import LinkToken from "../models/linkToken.model.js";
 
-// 🔐 REGISTER
+
+// =========================
+// ❌ REGISTER (DESHABILITADO)
+// =========================
 export const register = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ error: "El usuario ya existe" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = new User({
-      email,
-      password: hashedPassword,
-    });
-
-    await user.save();
-
-    res.json({ message: "Usuario creado correctamente" });
-  } catch (error) {
-    res.status(500).json({ error: "Error al registrar usuario" });
-  }
+  return res.status(403).json({
+    error: "Registro deshabilitado. Usa Minecraft login."
+  });
 };
 
-// 🔑 LOGIN NORMAL (WEB)
+
+// =========================
+// ❌ LOGIN WEB (DESHABILITADO)
+// =========================
 export const login = async (req, res) => {
+  return res.status(403).json({
+    error: "Login web deshabilitado. Usa Minecraft."
+  });
+};
+
+
+// =========================
+// 🎮 LOGIN DESDE MOD (ÚNICO SISTEMA REAL)
+// =========================
+export const minecraftLogin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { uuid, username, folderName } = req.body;
 
-    const user = await User.findOne({ email });
+    if (!uuid) {
+      return res.status(400).json({ error: "UUID requerido" });
+    }
+
+    let user = await User.findOne({ uuid });
+
     if (!user) {
-      return res.status(400).json({ error: "Usuario no existe" });
+      user = await User.create({
+        uuid,
+        username: username || "Jugador"
+      });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ error: "Password incorrecto" });
-    }
+    // 🌍 crear mundo si viene folderName
+    if (folderName) {
+      let world = await World.findOne({
+        user: user._id,
+        folderName
+      });
 
-    let world = await World.findOne({ user: user._id, active: true });
-
-    if (!world) {
-      world = await World.findOne({ user: user._id })
-        .sort({ createdAt: -1 });
+      if (!world) {
+        await World.create({
+          name: folderName,
+          folderName,
+          user: user._id,
+          active: true
+        });
+      }
     }
 
     const token = jwt.sign(
@@ -61,72 +71,20 @@ export const login = async (req, res) => {
 
     res.json({
       token,
-      worldId: world ? world._id.toString() : ""
+      username: user.username,
+      uuid: user.uuid
     });
 
   } catch (error) {
-    console.error("🔥 ERROR LOGIN:", error);
-    res.status(500).json({ error: "Error al iniciar sesión" });
-  }
-};
-
-// 🎮 LOGIN AUTOMÁTICO DESDE EL MOD
-export const minecraftLogin = async (req, res) => {
-  try {
-    const { uuid, username, folderName } = req.body;
-
-    if (!uuid) {
-      return res.status(400).json({ error: "UUID requerido" });
-    }
-
-    // 🔥 UPSERT REAL (NO DUPLICA NUNCA)
-    const user = await User.findOneAndUpdate(
-      { uuid },
-      {
-        $set: {
-          username: username || "Jugador"
-        }
-      },
-      {
-        new: true,
-        upsert: true // 🔥 clave
-      }
-    );
-
-    // 🌍 CREAR MUNDO
-    if (folderName) {
-      const existingWorld = await World.findOne({
-        user: user._id,
-        folderName
-      });
-
-      if (!existingWorld) {
-        await World.create({
-          name: folderName,
-          folderName,
-          user: user._id,
-          active: true
-        });
-
-        console.log("🌍 Mundo creado:", folderName);
-      }
-    }
-
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "30d" }
-    );
-
-    res.json({ token });
-
-  } catch (error) {
     console.error("❌ minecraftLogin:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error en login mod" });
   }
 };
 
-// 🔥 GENERAR LINK TOKEN (desde el mod)
+
+// =========================
+// 🔥 LINK TOKEN (MOD → WEB LOGIN)
+// =========================
 export const generateLinkToken = async (req, res) => {
   try {
     const { uuid, username } = req.body;
@@ -137,10 +95,8 @@ export const generateLinkToken = async (req, res) => {
 
     let user = await User.findOne({ uuid });
 
-    // 🚀 crear usuario si no existe
     if (!user) {
-      user = new User({ uuid, username });
-      await user.save();
+      user = await User.create({ uuid, username });
     }
 
     const token = crypto.randomBytes(32).toString("hex");
@@ -148,7 +104,7 @@ export const generateLinkToken = async (req, res) => {
     await LinkToken.create({
       token,
       userId: user._id,
-      expiresAt: new Date(Date.now() + 30 * 1000) // ⏳ 30s
+      expiresAt: new Date(Date.now() + 30 * 1000)
     });
 
     res.json({
@@ -161,7 +117,10 @@ export const generateLinkToken = async (req, res) => {
   }
 };
 
-// 🔥 CONSUMIR LINK (login automático en web)
+
+// =========================
+// 🔥 CONSUMIR LINK (LOGIN WEB)
+// =========================
 export const consumeLinkToken = async (req, res) => {
   try {
     const { token } = req.params;
@@ -180,7 +139,6 @@ export const consumeLinkToken = async (req, res) => {
 
     await LinkToken.deleteOne({ token });
 
-    // 🔥 redirect con sesión
     res.redirect(
       `https://hardcorelogs.vercel.app/auth-success?token=${jwtToken}`
     );
