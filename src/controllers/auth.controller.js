@@ -79,34 +79,36 @@ export const minecraftLogin = async (req, res) => {
       return res.status(400).json({ error: "UUID requerido" });
     }
 
-    let user = await User.findOne({ uuid });
+    // 🔥 UPSERT REAL (NO DUPLICA NUNCA)
+    const user = await User.findOneAndUpdate(
+      { uuid },
+      {
+        $set: {
+          username: username || "Jugador"
+        }
+      },
+      {
+        new: true,
+        upsert: true // 🔥 clave
+      }
+    );
 
-    // 🧑 Crear usuario si no existe
-    if (!user) {
-      user = new User({
-        uuid,
-        username: username || "Jugador"
-      });
-      await user.save();
-    }
-
-    // 🌍 CREAR MUNDO AUTOMÁTICO SI VIENE folderName
+    // 🌍 CREAR MUNDO
     if (folderName) {
-      let world = await World.findOne({
+      const existingWorld = await World.findOne({
         user: user._id,
-        folderName: folderName
+        folderName
       });
 
-      if (!world) {
-        world = new World({
+      if (!existingWorld) {
+        await World.create({
           name: folderName,
-          folderName: folderName,
+          folderName,
           user: user._id,
           active: true
         });
 
-        await world.save();
-        console.log("🌍 Mundo creado en login:", folderName);
+        console.log("🌍 Mundo creado:", folderName);
       }
     }
 
@@ -119,11 +121,8 @@ export const minecraftLogin = async (req, res) => {
     res.json({ token });
 
   } catch (error) {
-    console.error("❌ minecraftLogin ERROR FULL:", error);
-    res.status(500).json({
-        error: error.message,
-        stack: error.stack
-    });
+    console.error("❌ minecraftLogin:", error);
+    res.status(500).json({ error: error.message });
   }
 };
 
