@@ -119,8 +119,11 @@ export const minecraftLogin = async (req, res) => {
     res.json({ token });
 
   } catch (error) {
-    console.error("❌ minecraftLogin:", error);
-    res.status(500).json({ error: "Error en login automático" });
+    console.error("❌ minecraftLogin ERROR FULL:", error);
+    res.status(500).json({
+        error: error.message,
+        stack: error.stack
+    });
   }
 };
 
