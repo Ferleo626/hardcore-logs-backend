@@ -73,36 +73,41 @@ export const login = async (req, res) => {
 // 🎮 LOGIN AUTOMÁTICO DESDE EL MOD
 export const minecraftLogin = async (req, res) => {
   try {
-    if (!process.env.JWT_SECRET) {
-      throw new Error("Falta JWT_SECRET en .env");
-    }
-
-    const { uuid, username } = req.body;
+    const { uuid, username, folderName } = req.body;
 
     if (!uuid) {
       return res.status(400).json({ error: "UUID requerido" });
     }
 
-    // 🔥 UPSERT (PRO)
-    let user = await User.findOneAndUpdate(
-      { uuid },
-      {
-        $setOnInsert: {
-          uuid,
-          username: username || "Jugador"
-        }
-      },
-      {
-        new: true,
-        upsert: true
-      }
-    );
+    let user = await User.findOne({ uuid });
 
-    // 🔄 actualizar username si cambia
-    if (username && user.username !== username) {
-      user.username = username;
+    // 🧑 Crear usuario si no existe
+    if (!user) {
+      user = new User({
+        uuid,
+        username: username || "Jugador"
+      });
       await user.save();
-      console.log("🔄 Username actualizado:", username);
+    }
+
+    // 🌍 CREAR MUNDO AUTOMÁTICO SI VIENE folderName
+    if (folderName) {
+      let world = await World.findOne({
+        user: user._id,
+        folderName: folderName
+      });
+
+      if (!world) {
+        world = new World({
+          name: folderName,
+          folderName: folderName,
+          user: user._id,
+          active: true
+        });
+
+        await world.save();
+        console.log("🌍 Mundo creado en login:", folderName);
+      }
     }
 
     const token = jwt.sign(
