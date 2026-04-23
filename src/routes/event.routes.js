@@ -1,11 +1,20 @@
 import { Router } from "express";
-import { createEvent, getEventsByWorld, generateSummary } from "../controllers/event.controller.js";
+import {
+  createEvent,
+  createEventFromMod,
+  getEventsByWorld,
+  generateSummary
+} from "../controllers/event.controller.js";
+
 import { authMiddleware } from "../middleware/auth.js";
 
 const router = Router();
 
-// 💎 CREAR EVENTO
-router.post("/", authMiddleware, createEvent);
+// 🎮 MOD → sin auth (UUID automático)
+router.post("/", createEventFromMod);
+
+// 🔐 WEB → con auth
+router.post("/secure", authMiddleware, createEvent);
 
 // 📊 RESUMEN DEL MUNDO
 router.get("/summary/:worldId", generateSummary);
