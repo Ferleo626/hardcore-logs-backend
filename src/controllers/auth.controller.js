@@ -31,7 +31,11 @@ export const login = async (req, res) => {
 // =========================
 export const minecraftLogin = async (req, res) => {
   try {
-    const { uuid, username, folderName } = req.body;
+    // 🔍 DEBUG CRÍTICO (LO QUE NECESITAMOS VER)
+    console.log("📥 HEADERS:", req.headers);
+    console.log("📥 BODY RAW:", req.body);
+
+    const { uuid, username, folderName } = req.body || {};
 
     if (!uuid) {
       return res.status(400).json({ error: "UUID requerido" });
@@ -69,7 +73,7 @@ export const minecraftLogin = async (req, res) => {
       { expiresIn: "30d" }
     );
 
-    res.json({
+    return res.json({
       token,
       username: user.username,
       uuid: user.uuid
@@ -77,10 +81,9 @@ export const minecraftLogin = async (req, res) => {
 
   } catch (error) {
     console.error("❌ minecraftLogin:", error);
-    res.status(500).json({ error: "Error en login mod" });
+    return res.status(500).json({ error: "Error en login mod" });
   }
 };
-
 
 // =========================
 // 🔥 LINK TOKEN (MOD → WEB LOGIN)
