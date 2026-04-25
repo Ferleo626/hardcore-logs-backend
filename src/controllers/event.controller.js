@@ -5,14 +5,13 @@ import World from "../models/world.model.js";
 // 🧠 NORMALIZADORES
 // ===============================
 
-// 🔥 limpia folderName (SOLUCIÓN CLAVE)
+// 🔥 limpia "_" al final (SIN romper nada)
 const normalizeFolder = (name) => {
   if (!name) return null;
 
   return name
     .trim()
-    .replace(/_+$/, "") // ❌ elimina "_" al final
-    .replace(/\s+/g, " "); // limpia espacios raros
+    .replace(/_+$/, ""); // solo elimina "_" final
 };
 
 // 🌍 normaliza dimensión
@@ -26,18 +25,23 @@ const normalizeDimension = (dim) => {
 };
 
 // ===============================
-// 📡 CREAR EVENTO
+// 📡 CREAR EVENTO (ESTABLE)
 // ===============================
 export const createEvent = async (req, res) => {
   try {
-    const { type, folderName, x, y, z, description, dimension, player } = req.body;
+    const {
+      type,
+      folderName,
+      x,
+      y,
+      z,
+      description,
+      dimension,
+      player
+    } = req.body;
 
+    // 🔐 user opcional (NO rompe si no hay auth)
     const userId = req.user?.id;
-
-    if (!userId) {
-      console.error("❌ SIN USER EN TOKEN");
-      return res.status(401).json({ error: "No autorizado" });
-    }
 
     const cleanFolder = normalizeFolder(folderName);
 
@@ -45,26 +49,36 @@ export const createEvent = async (req, res) => {
       return res.status(400).json({ error: "folderName inválido" });
     }
 
-    console.log(`📡 EVENTO → "${cleanFolder}" | user: ${userId}`);
+    console.log("📥 EVENT:", req.body);
+    console.log("👤 USER:", req.user);
 
     // ===========================
-    // 🔍 BUSCAR MUNDO NORMALIZADO
+    // 🔍 BUSCAR MUNDO
     // ===========================
-    let world = await World.findOne({
-      user: userId,
-      folderName: cleanFolder
-    });
+    let world = null;
+
+    if (userId) {
+      world = await World.findOne({
+        user: userId,
+        folderName: cleanFolder
+      });
+    } else {
+      // fallback si no hay auth (modo antiguo)
+      world = await World.findOne({
+        folderName: cleanFolder
+      });
+    }
 
     // ===========================
-    // 🚀 CREAR SI NO EXISTE
+    // 🚀 CREAR MUNDO SI NO EXISTE
     // ===========================
     if (!world) {
-      console.log(`🔧 Creando mundo limpio: "${cleanFolder}"`);
+      console.log(`🔧 Creando mundo: "${cleanFolder}"`);
 
       world = await World.create({
         name: cleanFolder,
         folderName: cleanFolder,
-        user: userId,
+        user: userId || null,
         active: true,
         status: "activo"
       });
@@ -90,6 +104,7 @@ export const createEvent = async (req, res) => {
     // 🚀 SOCKET
     // ===========================
     const io = req.app.get("socketio");
+
     if (io) {
       io.emit("newEvent", {
         ...newEvent._doc,
