@@ -19,7 +19,8 @@ export const createEvent = async (req, res) => {
   const userId = req.user.id;
 
   console.log(`📡 EVENTO → carpeta: "${folderName}" | user: ${userId}`);
-
+  console.log("📥 EVENT:", req.body);
+  console.log("👤 USER:", req.user);
   try {
     // 🔥 BUSCAR MUNDO EXACTO
     let world = await World.findOne({ folderName: folderName, user: userId });
