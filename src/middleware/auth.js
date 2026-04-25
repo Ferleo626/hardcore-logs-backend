@@ -29,4 +29,18 @@ export const authMiddleware = (req, res, next) => {
     console.log("AUTH MIDDLEWARE: Token inválido", error.message);
     return res.status(401).json({ error: "Token inválido" });
   }
+  console.log("🔐 HEADER:", req.headers.authorization);
+
+try {
+  const token = req.headers.authorization?.split(" ")[1];
+
+  console.log("🔐 TOKEN:", token);
+
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+  console.log("✅ DECODED:", decoded);
+
+} catch (err) {
+  console.error("❌ JWT ERROR:", err.message);
+}
 };
