@@ -1,12 +1,26 @@
 import Event from "../models/event.model.js";
 import World from "../models/world.model.js";
 
-// Función para normalizar dimensión
+// ===============================
+// 🧠 NORMALIZADORES
+// ===============================
+
+// 🔥 limpia folderName (SOLUCIÓN CLAVE)
+const normalizeFolder = (name) => {
+  if (!name) return null;
+
+  return name
+    .trim()
+    .replace(/_+$/, "") // ❌ elimina "_" al final
+    .replace(/\s+/g, " "); // limpia espacios raros
+};
+
+// 🌍 normaliza dimensión
 const normalizeDimension = (dim) => {
   if (!dim) return "OVERWORLD";
 
-  if (dim.includes("nether") || dim === "NETHER") return "THE_NETHER";
-  if (dim.includes("end") || dim === "END") return "THE_END";
+  if (dim.toLowerCase().includes("nether")) return "THE_NETHER";
+  if (dim.toLowerCase().includes("end")) return "THE_END";
 
   return "OVERWORLD";
 };
@@ -15,32 +29,51 @@ const normalizeDimension = (dim) => {
 // 📡 CREAR EVENTO
 // ===============================
 export const createEvent = async (req, res) => {
-  const { type, folderName, x, y, z, description, dimension, player } = req.body;
-  const userId = req.user.id;
-
-  console.log(`📡 EVENTO → carpeta: "${folderName}" | user: ${userId}`);
-  console.log("📥 EVENT:", req.body);
-  console.log("👤 USER:", req.user);
   try {
-    // 🔥 BUSCAR MUNDO EXACTO
-    let world = await World.findOne({ folderName: folderName, user: userId });
+    const { type, folderName, x, y, z, description, dimension, player } = req.body;
 
-    // 🚀 SI NO EXISTE → CREAR AUTOMÁTICO
+    const userId = req.user?.id;
+
+    if (!userId) {
+      console.error("❌ SIN USER EN TOKEN");
+      return res.status(401).json({ error: "No autorizado" });
+    }
+
+    const cleanFolder = normalizeFolder(folderName);
+
+    if (!cleanFolder) {
+      return res.status(400).json({ error: "folderName inválido" });
+    }
+
+    console.log(`📡 EVENTO → "${cleanFolder}" | user: ${userId}`);
+
+    // ===========================
+    // 🔍 BUSCAR MUNDO NORMALIZADO
+    // ===========================
+    let world = await World.findOne({
+      user: userId,
+      folderName: cleanFolder
+    });
+
+    // ===========================
+    // 🚀 CREAR SI NO EXISTE
+    // ===========================
     if (!world) {
-      console.log(`🔧 Mundo "${folderName}" no encontrado → creando automáticamente`);
-      world = new World({
-        name: folderName,
-        folderName: folderName,
+      console.log(`🔧 Creando mundo limpio: "${cleanFolder}"`);
+
+      world = await World.create({
+        name: cleanFolder,
+        folderName: cleanFolder,
         user: userId,
         active: true,
         status: "activo"
       });
-      await world.save();
-      console.log(`✅ Mundo creado → ${world.name}`);
     }
 
-    // 🔥 CREAR EVENTO
-    const newEvent = new Event({
+    // ===========================
+    // 💾 CREAR EVENTO
+    // ===========================
+    const newEvent = await Event.create({
       type,
       player: player || "Desconocido",
       x,
@@ -51,17 +84,17 @@ export const createEvent = async (req, res) => {
       worldId: world._id
     });
 
-    await newEvent.save();
-    console.log(`💾 EVENTO GUARDADO en ${world.name}`);
+    console.log(`💾 EVENTO GUARDADO → ${world.name}`);
 
-    // 🔥 SOCKET
+    // ===========================
+    // 🚀 SOCKET
+    // ===========================
     const io = req.app.get("socketio");
     if (io) {
       io.emit("newEvent", {
         ...newEvent._doc,
         worldId: world._id
       });
-      console.log(`🚀 SOCKET EMITIDO → worldId: ${world._id}`);
     }
 
     res.status(201).json(newEvent);
@@ -88,7 +121,7 @@ export const getEventsByWorld = async (req, res) => {
 };
 
 // ===============================
-// 🧾 RESUMEN DEL MUNDO (NUEVO)
+// 🧾 RESUMEN DEL MUNDO
 // ===============================
 export const generateSummary = async (req, res) => {
   const { worldId } = req.params;
@@ -96,8 +129,8 @@ export const generateSummary = async (req, res) => {
   try {
     const events = await Event.find({ worldId });
 
-    const deaths = events.filter(e => e.type === "DEATH").length;
-    const diamonds = events.filter(e => e.type === "DIAMOND").length;
+    const deaths = events.filter(e => e.type.includes("DEATH")).length;
+    const diamonds = events.filter(e => e.type.includes("DIAMOND")).length;
 
     const summary = `
 Sobreviviste ${events.length} eventos.
