@@ -1,14 +1,23 @@
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
+  // 🌐 WEB
+  email: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  password: {
+    type: String
+  },
 
-  // 🎮 ÚNICO IDENTIFICADOR (Minecraft)
+  // 🎮 MOD
   uuid: {
     type: String,
     unique: true,
+    sparse: true,
     required: true
   },
-
   username: {
     type: String,
     default: "Jugador"
