@@ -31,11 +31,9 @@ export const login = async (req, res) => {
 // =========================
 export const minecraftLogin = async (req, res) => {
   try {
-    // 🔍 DEBUG CRÍTICO (LO QUE NECESITAMOS VER)
-    console.log("📥 HEADERS:", req.headers);
-    console.log("📥 BODY RAW:", req.body);
+    console.log("📥 BODY LOGIN:", req.body);
 
-    const { uuid, username, folderName } = req.body || {};
+    const { uuid, username } = req.body;
 
     if (!uuid) {
       return res.status(400).json({ error: "UUID requerido" });
@@ -44,26 +42,18 @@ export const minecraftLogin = async (req, res) => {
     let user = await User.findOne({ uuid });
 
     if (!user) {
-      user = await User.create({
+      user = new User({
         uuid,
         username: username || "Jugador"
       });
-    }
 
-    // 🌍 crear mundo si viene folderName
-    if (folderName) {
-      let world = await World.findOne({
-        user: user._id,
-        folderName
-      });
-
-      if (!world) {
-        await World.create({
-          name: folderName,
-          folderName,
-          user: user._id,
-          active: true
-        });
+      await user.save();
+      console.log("🆕 Usuario creado:", uuid);
+    } else {
+      if (username && user.username !== username) {
+        user.username = username;
+        await user.save();
+        console.log("🔄 Username actualizado:", username);
       }
     }
 
@@ -73,15 +63,15 @@ export const minecraftLogin = async (req, res) => {
       { expiresIn: "30d" }
     );
 
-    return res.json({
-      token,
-      username: user.username,
-      uuid: user.uuid
-    });
+    res.json({ token });
 
   } catch (error) {
-    console.error("❌ minecraftLogin:", error);
-    return res.status(500).json({ error: "Error en login mod" });
+    console.error("🔥 ERROR REAL minecraftLogin:", error);
+
+    res.status(500).json({
+      error: "Error en login mod",
+      details: error.message // 🔥 CLAVE
+    });
   }
 };
 
