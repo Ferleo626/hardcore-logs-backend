@@ -10,10 +10,8 @@ import { authMiddleware } from "../middleware/auth.js";
 const router = Router();
 
 // 🎮 MOD → SIN AUTH (usa UUID automáticamente)
-router.post("/", createEvent);
+router.post("/", authMiddleware, createEvent);
 
-// 🔐 WEB → CON AUTH
-router.post("/secure", authMiddleware, createEvent);
 
 // 📊 RESUMEN DEL MUNDO
 router.get("/summary/:worldId", generateSummary);
